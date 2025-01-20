@@ -118,7 +118,7 @@ CANVAS, IMG { image-rendering: pixelated; image-rendering: optimizeSpeed;
 	<span id="panel2_2" style="display:none;">Period (arrow = overall)</span>
 	</td>
 	</tr><tr>
-	<td id="canvas1td1"><canvas id="canvas1" class="field" onclick="actionKey=ALT+'F'"></canvas></td>
+	<td id="canvas1td1"><canvas id="canvas1" class="field" ></canvas></td>
 	<td id="canvas2td1"><canvas id="canvas2" class="field" onclick="actionKey=ALT+'F'"></canvas></td>
 	</tr><tr>
 	<td id="canvas3td1"><canvas id="canvas3" class="field" onclick="actionKey=ALT+'F'"></canvas></td>
@@ -907,7 +907,7 @@ var optGIF = 0;  const GIF_OFF = 0, GIF_ON = 1;
 var LOG_PIXEL = 0;
 var PIXEL = 1 << LOG_PIXEL;
 var P_SIZE = F_SIZE * PIXEL;
-var optWindows = 1;  const Windows_FIELD = 0, Windows_CALC = 1, Windows_STAT = 2;
+var optWindows = 0;  const Windows_FIELD = 0, Windows_CALC = 1, Windows_STAT = 2;
 var optPanel = 1;  const Panel_CTRL = 0, Panel_PLOT = 1, Panel_CALC = 2, Panel_CUBE = 3, Panel_STAT = 4, Panel_INFO = 5;
 var isKernelDrawn = false;
 var optColor = 1;  const GREY = 0, BLUE = 1, GREEN = 2, RAINBOW = 3; const LMARK = 11, MMARK = 12, DMARK = 13;
