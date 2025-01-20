@@ -974,6 +974,8 @@ var selectedLifePattern = null;
 var selectedDirection = null;
 var defaultDirection = null;
 var currentMovementType = null;
+var lastClientX = -1;
+var lastClientY = -1;
 
 
 //*** gif
@@ -1441,6 +1443,13 @@ function getRotationFromDirection(dir) {
     return angleDiff;
 }
 
+// LAC
+function updateCanvasPosition() {
+    const rect = canvas1.can.getBoundingClientRect();
+    canvas1.left = rect.left;
+    canvas1.top = rect.top;
+}
+
 function BodyOnload() {
 	isMac = window.navigator.platform.startsWith("Mac");
 	InitAllStat();
@@ -1462,20 +1471,42 @@ function BodyOnload() {
 	document.body.addEventListener("paste", OnPaste);
 	document.body.addEventListener("keydown", OnKeyDown);
 	canvas1.can.addEventListener("mousemove", function (e) { 
-		mouseX = (e.clientX-canvas1.left)/PIXEL;
-		mouseY = (e.clientY-canvas1.top)/PIXEL; 
+		updateCanvasPosition();
+		
+		mouseX = (e.clientX - canvas1.left)/PIXEL;
+		mouseY = (e.clientY - canvas1.top)/PIXEL; 
     
-		// LAC: Update coordinates display
+		// Store the viewport-relative coordinates
+		lastClientX = e.clientX;
+		lastClientY = e.clientY;
+
+		// Update coordinates display
    		document.getElementById('coords_x').innerHTML = Math.floor(mouseX);
 		document.getElementById('coords_y').innerHTML = Math.floor(mouseY);
 		
 		if (!isRunning) DrawAllPanels(); 
+	});
+	// LAC: Add scroll event listener to the window
+	window.addEventListener('scroll', function() {
+		// Only update if we have valid mouse coordinates
+		if (lastClientX !== -1) {
+			updateCanvasPosition();
+			mouseX = (lastClientX-canvas1.left)/PIXEL;
+			mouseY = (lastClientY-canvas1.top)/PIXEL;
+			
+			// Update coordinates display
+			document.getElementById('coords_x').innerHTML = Math.floor(mouseX);
+		    document.getElementById('coords_y').innerHTML = Math.floor(mouseY);
+
+        	if (!isRunning) DrawAllPanels();
+		}
 	});
 	// LAC: Add mouseout handler to clear coordinates
 	canvas1.can.addEventListener("mouseout", function (e) {
 		document.getElementById('coords_x').innerHTML = "--";
 		document.getElementById('coords_y').innerHTML = "--";
 		mouseX = mouseY = -1;
+		lastClientX = lastClientY = -1;
 		if (!isRunning) DrawAllPanels();
 	});
 	// LAC: Add click to add new forms
