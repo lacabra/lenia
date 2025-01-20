@@ -102,6 +102,22 @@ CANVAS, IMG { image-rendering: pixelated; image-rendering: optimizeSpeed;
 .cubeTop { border-bottom:0px; }
 .cubeBottom { border-top:0px; }
 .plotDiv { width:650px; height:400px; border:solid 1px #bdf;}
+
+.dirButton {
+    width: 20px;
+    height: 20px;
+    margin: 0px;
+    cursor: pointer;
+	font: 12px sans-serif;
+	padding: .2em .5em;
+}
+.dirButton.disabled {
+    opacity: 0.3;
+    cursor: not-allowed;
+}
+.dirButton.selected {
+    border: 2px solid orange;
+}
 </STYLE>
 </HEAD>
 
@@ -141,6 +157,57 @@ CANVAS, IMG { image-rendering: pixelated; image-rendering: optimizeSpeed;
 		y: <span id="coords_y" class="num">--</span>
 		</td>
 	</tr><tr>
+		<td>
+			<br/>
+			Soliton:
+			<table cellpadding="3" cellspacing="0" id="LifeCatalogue">
+				<tr>
+					<td>
+						<img src="catalogue/blank.png" title="Pixel" class=catImg data-code="" onclick="SelectLifePattern(this)" style="border:2px solid orange">
+					</td>
+					<td>
+						<img src="catalogue/GoL.png" title="Glider" class="catImg" data-code="~(glider)" onclick="SelectLifePattern(this)">
+					</td>
+					<td>
+						<img src="catalogue/GoL3.png" title="Light Weight Spaceship" class="catImg" data-code="~(LWSS)" onclick="SelectLifePattern(this)">
+					</td>
+					<td>
+						<img src="catalogue/GoL4.png" title="Medium Weight Spaceship" class="catImg" data-code="~(MWSS)" onclick="SelectLifePattern(this)">
+					</td>
+					<td>
+						<img src="catalogue/GoL5.png" title="Heavy Weight Spaceship" class="catImg" data-code="~(MWSS)" onclick="SelectLifePattern(this)">
+					</td>
+					<td>
+						<img src="catalogue/GoL6.png" title="Copperhead" class="catImg" data-code="~(copperhead)" onclick="SelectLifePattern(this)">
+					</td>
+					<td>
+						<img src="catalogue/GoL7.png" title="Weekender" class="catImg" data-code="~(weekender)" onclick="SelectLifePattern(this)">
+					</td>
+					<td>
+						<img src="catalogue/GoL8.png" title="Lobster" class="catImg" data-code="~(lobster)" onclick="SelectLifePattern(this)">
+					</td>
+				</tr>
+			</table>
+			<br/>
+			Direction:
+			<table cellpadding=3 cellspacing=0 style="margin: 0 auto;">
+				<tr>
+					<td><input type="button" class="btnField btnCollideOff" id="dirNW" value="↖" onclick="SelectDirection('NW');this.blur();" disabled></td>
+					<td><input type="button" class="btnField btnCollideOff" id="dirN" value="↑" onclick="SelectDirection('N');this.blur();" disabled></td>
+					<td><input type="button" class="btnField btnCollideOff" id="dirNE" value="↗" onclick="SelectDirection('NE');this.blur();" disabled></td>
+				</tr>
+				<tr>
+					<td><input type="button" class="btnField btnCollideOff" id="dirW" value="←" onclick="SelectDirection('W');this.blur();" disabled></td>
+					<td></td>
+					<td><input type="button" class="btnField btnCollideOff" id="dirE" value="→" onclick="SelectDirection('E');this.blur();" disabled></td>
+				</tr>
+				<tr>
+					<td><input type="button" class="btnField btnCollideOff" id="dirSW" value="↙" onclick="SelectDirection('SW');this.blur();" disabled></td>
+					<td><input type="button" class="btnField btnCollideOff" id="dirS" value="↓" onclick="SelectDirection('S');this.blur();" disabled></td>
+					<td><input type="button" class="btnField btnCollideOff" id="dirSE" value="↘" onclick="SelectDirection('SE');this.blur();" disabled></td>
+				</tr>
+			</table>
+	</tr><td></td>
 	<td><canvas id="canvasT" class="field" style="display:none;"></canvas></td>
 	</tr></table>
 	<br>
@@ -903,6 +970,11 @@ var accumY = 0;
 var accumA = 0;
 var accumF = 0;
 var isMac = false;
+var selectedLifePattern = null;
+var selectedDirection = null;
+var defaultDirection = null;
+var currentMovementType = null;
+
 
 //*** gif
 var gif = new GIFEncoder();
@@ -1265,6 +1337,110 @@ function SelectStat(id) {
 	lastStatTR = id;
 }
 
+// LAC: Function to detect movement type from pattern names
+function getMovementPropertiesFromPattern(pattern) {
+    const englishTitle = pattern[1].toLowerCase();
+    const scientificTitle = pattern[2].toLowerCase();
+    
+    const type = (englishTitle.includes("orthogonal") || scientificTitle.includes("orthogonal")) ? "orthogonal" :
+           		 (englishTitle.includes("diagonal") || scientificTitle.includes("diagonal")) ? "diagonal" : 
+           		 "diagonal";  // Default to diagonal if not specified
+	var defaultDir
+	if (englishTitle.includes("copperhead") || englishTitle.includes("weekender")){
+		defaultDir = 'N'
+	} else if (englishTitle.includes("lobster")){
+		defaultDir = 'NE'
+	} else if (type == "orthogonal"){
+		defaultDir = 'E'
+	} else {
+		defaultDir = 'SE'
+	}
+	return {
+        type: type,
+        defaultDirection: defaultDir
+    };
+}
+
+// LAC: Select life pattern for insertion into canvas
+function SelectLifePattern(img) {
+    selectedLifePattern = img.dataset.code;
+	selectedDirection = null;
+	// Reset borders for all images
+    var images = document.getElementById('LifeCatalogue').getElementsByClassName('catImg');
+    for(var i = 0; i < images.length; i++) {
+        images[i].style.border = "0px solid white";
+        images[i].style.opacity = "0.4";
+    }
+    // Add orange border to selected image
+    img.style.border = "2px solid orange";
+    img.style.opacity = "1.0";
+	// Find movement type in animalArr
+    for (var i = 0; i < animalArr.length; i++) {
+        if (animalArr[i][0] === selectedLifePattern) {
+            const props = getMovementPropertiesFromPattern(animalArr[i]);
+			currentMovementType = props.type;
+            defaultDirection = props.defaultDirection;
+            break;
+        }
+    }
+	selectedDirection = defaultDirection;
+
+	updateDirectionButtons();
+}
+
+// LAC: Select Direction of life pattern
+function updateDirectionButtons() {
+    const buttons = document.getElementsByClassName('btnField');
+    for (let button of buttons) {
+        if (!button.id.startsWith('dir')) continue;  // Skip non-direction buttons
+        
+        const dir = button.id.replace('dir', '');
+        const isValidDir = currentMovementType === "diagonal" ? 
+            ['NW', 'NE', 'SW', 'SE'].includes(dir) : 
+            ['N', 'E', 'S', 'W'].includes(dir);
+        
+        button.disabled = !isValidDir;
+        // Use the existing button styles
+        button.style.opacity = isValidDir ? "1.0" : "0.4";
+        button.style.border = (dir === selectedDirection) ? "2px solid orange" : "2px solid white";
+        // Preserve the btnField class styling
+        button.className = isValidDir ? "btnField" : "btnField btnCollideOff";
+    }
+}
+
+// LAC: Select a direction for the life pattern insertion
+function SelectDirection(dir) {
+    const button = document.getElementById('dir' + dir);
+    if (button.disabled) return;
+    selectedDirection = dir;
+    updateDirectionButtons();
+}
+
+// LAC: Returns the rotation in degrees for a given direction
+function getRotationFromDirection(dir) {
+     // Define all possible directions and their angles
+    const allDirections = {
+        'E': 0, 'SE': 45, 'S': 90, 'SW': 135,
+        'W': 180, 'NW': 225, 'N': 270, 'NE': 315
+    };
+    
+    // Calculate relative rotation needed
+    const defaultAngle = allDirections[defaultDirection];
+    const targetAngle = allDirections[dir];
+    
+    // Get the smallest angle difference (considering wraparound)
+    let angleDiff = targetAngle - defaultAngle;
+    if (angleDiff > 180) angleDiff -= 360;
+    if (angleDiff < -180) angleDiff += 360;
+    
+    // For orthogonal patterns, only allow 90-degree rotations
+    if (currentMovementType === "orthogonal") {
+        angleDiff = Math.round(angleDiff / 90) * 90;
+    }
+    
+    return angleDiff;
+}
+
 function BodyOnload() {
 	isMac = window.navigator.platform.startsWith("Mac");
 	InitAllStat();
@@ -1276,8 +1452,9 @@ function BodyOnload() {
 	DrawSwatches();
 
 	DefaultGroups();
-	PresetAnimal({fsize:7, animalCode:DEFAULT_ANIMAL});
-	TransformField(0, 0, 2, 0, 0);
+	PresetRule({fsize:6, ns:2, ts:1, dfunc:3, lfunc:0, cfunc:4, A:4, C:0.35, W:0.07, isFill:false});
+	AddCells("(zip)01/001/111", false, false);
+	// TransformField(0, 0, 2, 0, 0);
 
 	//*** works in Windows, but OS X only allow running cut command from semi-trusted events (e.g. onkeydown but not oncopy) 
 	//*** run OnCopy inside OnKeyDown instead
@@ -1301,6 +1478,73 @@ function BodyOnload() {
 		mouseX = mouseY = -1;
 		if (!isRunning) DrawAllPanels();
 	});
+	// LAC: Add click to add new forms
+	canvas1.can.addEventListener("click", function(e) {
+
+		// Get click position in grid coordinates
+		var x = Math.floor((e.clientX - canvas1.left)/PIXEL);
+		var y = Math.floor((e.clientY - canvas1.top)/PIXEL);
+		
+		// If no life pattern, turn pixels on and off individually
+		if (!selectedLifePattern){
+            field[y][x] = field[y][x] > 0 ? 0 : 1.0;
+			NextGen(false);
+			CalcMoments();
+			DrawAllPanels();
+		}else{
+			// Find the pattern in animalArr
+			for (var i = 0; i < animalArr.length; i++) {
+				if (animalArr[i][0] === selectedLifePattern) {
+					// Get the pattern definition
+					var pattern = animalArr[i][3];
+					if (pattern) {
+						var cellPart = pattern.split("cells=")[1];
+						var cells = ToCellArray(cellPart);
+
+						// Calculate center offsets
+                    	var centerX = Math.floor(cells.w / 2);
+                    	var centerY = Math.floor(cells.h / 2);
+
+						// Get rotation angle
+						var angle = getRotationFromDirection(selectedDirection);
+						var rad = angle * Math.PI / 180;
+						var sin = Math.sin(rad);
+						var cos = Math.cos(rad);
+
+						// For each cell in the pattern
+						for(var py = 0; py < cells.h; py++) {
+							for(var px = 0; px < cells.w; px++) {
+								// Get original cell value
+								var val = cells.arr[py][px];
+								if(val) {
+									// Calculate rotated position relative to center
+									var rx = px - centerX;
+									var ry = py - centerY;
+									
+									// Apply rotation
+									var newX = Math.round(rx * cos - ry * sin);
+									var newY = Math.round(rx * sin + ry * cos);
+									
+									// Add back center offset and clicked position
+									var finalX = Mod(x + newX, F_SIZE);
+									var finalY = Mod(y + newY, F_SIZE);
+									
+									// Set the cell
+									field[finalY][finalX] = val;
+								}
+							}
+						}
+						
+						NextGen(false);
+						CalcMoments();
+						DrawAllPanels();
+					}
+					break;
+				}
+			}
+		}
+	});
+
 	canvas2.can.addEventListener("mousemove", function (e) { mouseX = (e.clientX-canvas2.left)/PIXEL; mouseY = (e.clientY-canvas2.top)/PIXEL; if (!isRunning) DrawAllPanels(); });
 	canvas3.can.addEventListener("mousemove", function (e) { mouseX = (e.clientX-canvas3.left)/PIXEL; mouseY = (e.clientY-canvas3.top)/PIXEL; if (!isRunning) DrawAllPanels(); });
 	var OnMouseOut = function (e) { mouseX = mouseY = -1; if (!isRunning) DrawAllPanels(); };
