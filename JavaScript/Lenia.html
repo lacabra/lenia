@@ -136,6 +136,11 @@ CANVAS, IMG { image-rendering: pixelated; image-rendering: optimizeSpeed;
 	<span id="panel4_2" style="display:none;">FFT of Kernel = $| \mathcal F (k) (\mathbf u) |$</span>
 	-->
 	</td></tr><tr>
+		<td>
+		x: <span id="coords_x" class="num">--</span> 
+		y: <span id="coords_y" class="num">--</span>
+		</td>
+	</tr><tr>
 	<td><canvas id="canvasT" class="field" style="display:none;"></canvas></td>
 	</tr></table>
 	<br>
@@ -1279,7 +1284,23 @@ function BodyOnload() {
 	//document.body.addEventListener("copy", OnCopy);
 	document.body.addEventListener("paste", OnPaste);
 	document.body.addEventListener("keydown", OnKeyDown);
-	canvas1.can.addEventListener("mousemove", function (e) { mouseX = (e.clientX-canvas1.left)/PIXEL; mouseY = (e.clientY-canvas1.top)/PIXEL; if (!isRunning) DrawAllPanels(); });
+	canvas1.can.addEventListener("mousemove", function (e) { 
+		mouseX = (e.clientX-canvas1.left)/PIXEL;
+		mouseY = (e.clientY-canvas1.top)/PIXEL; 
+    
+		// LAC: Update coordinates display
+   		document.getElementById('coords_x').innerHTML = Math.floor(mouseX);
+		document.getElementById('coords_y').innerHTML = Math.floor(mouseY);
+		
+		if (!isRunning) DrawAllPanels(); 
+	});
+	// LAC: Add mouseout handler to clear coordinates
+	canvas1.can.addEventListener("mouseout", function (e) {
+		document.getElementById('coords_x').innerHTML = "--";
+		document.getElementById('coords_y').innerHTML = "--";
+		mouseX = mouseY = -1;
+		if (!isRunning) DrawAllPanels();
+	});
 	canvas2.can.addEventListener("mousemove", function (e) { mouseX = (e.clientX-canvas2.left)/PIXEL; mouseY = (e.clientY-canvas2.top)/PIXEL; if (!isRunning) DrawAllPanels(); });
 	canvas3.can.addEventListener("mousemove", function (e) { mouseX = (e.clientX-canvas3.left)/PIXEL; mouseY = (e.clientY-canvas3.top)/PIXEL; if (!isRunning) DrawAllPanels(); });
 	var OnMouseOut = function (e) { mouseX = mouseY = -1; if (!isRunning) DrawAllPanels(); };
@@ -2992,6 +3013,14 @@ function DrawArray(canvas, arr, scale, isHalf) {
 		FillCircle(canvas, mouseX*PIXEL, mouseY*PIXEL, 2, LMARK);
 	}
 
+	// LAC: Draw grey overlay for current cell
+    canvas.ctx.fillStyle = "rgba(128, 128, 128, 0.5)";
+    canvas.ctx.fillRect(
+        Math.floor(mouseX)*PIXEL, 
+        Math.floor(mouseY)*PIXEL, 
+        PIXEL, 
+        PIXEL
+    );
 }
 
 function DrawAllPanels() {
