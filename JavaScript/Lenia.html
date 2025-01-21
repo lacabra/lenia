@@ -163,7 +163,7 @@ CANVAS, IMG { image-rendering: pixelated; image-rendering: optimizeSpeed;
 			<table cellpadding="3" cellspacing="0" id="LifeCatalogue">
 				<tr>
 					<td>
-						<img src="catalogue/blank.png" title="Pixel" class=catImg data-code="" onclick="SelectLifePattern(this)" style="border:2px solid orange">
+						<img src="catalogue/blank.png" title="Pixel" class="catImg" data-code="" onclick="SelectLifePattern(this)" style="border:2px solid orange">
 					</td>
 					<td>
 						<img src="catalogue/GoL.png" title="Glider" class="catImg" data-code="~(glider)" onclick="SelectLifePattern(this)">
@@ -207,6 +207,19 @@ CANVAS, IMG { image-rendering: pixelated; image-rendering: optimizeSpeed;
 					<td><input type="button" class="btnField btnCollideOff" id="dirSE" value="↘" onclick="SelectDirection('SE');this.blur();" disabled></td>
 				</tr>
 			</table>
+			<br/>
+			Color: 
+			<table cellpadding="3" cellspacing="0" id="ColorForms">
+				<tr>
+					<td>
+						<img src="catalogue/red.png" title="Red" class="colorImg" data-code="1" onclick="selectColor(this)" style="border:2px solid orange">
+					</td>
+					<td>
+						<img src="catalogue/blue.png" title="Blue" class="colorImg" data-code="2" onclick="selectColor(this)" style="border:2px solid white">
+					</td>
+				</tr>
+			</table>
+
 	</tr><td></td>
 	<td><canvas id="canvasT" class="field" style="display:none;"></canvas></td>
 	</tr></table>
@@ -974,6 +987,7 @@ var selectedLifePattern = null;
 var selectedDirection = null;
 var defaultDirection = null;
 var currentMovementType = null;
+var selectedColor = 1;
 var lastClientX = -1;
 var lastClientY = -1;
 
@@ -992,7 +1006,9 @@ var isKernelDrawn = false;
 var optColor = 1;  const GREY = 0, BLUE = 1, GREEN = 2, RAINBOW = 3; const LMARK = 11, MMARK = 12, DMARK = 13;
 const NEG_THRES = -0.8; //-0.8
 const NEG_COLORS = 4; //4
-const COLOR_ZERO = [15,15,15];
+const COLOR_ZERO = [15,15,15];	// White for background *17 (0x11) = 255
+const COLOR_ONE = [15,0,5];     // Red for state 1
+const COLOR_TWO = [0,5,15];     // Blue for state 2
 const COLOR_NEG = [15,14,15];
 const COLOR_DOT = [12,12,13];
 const COLORS = [
@@ -1442,6 +1458,20 @@ function getRotationFromDirection(dir) {
     
     return angleDiff;
 }
+// LAC: select color for life form
+function selectColor(img) {
+	selectedColor = img.dataset.code
+	console.log(selectedColor)
+	// Reset borders for all images
+    var images = document.getElementById('ColorForms').getElementsByClassName('colorImg');
+    for(var i = 0; i < images.length; i++) {
+        images[i].style.border = "0px solid white";
+        images[i].style.opacity = "0.4";
+    }
+    // Add orange border to selected image
+    img.style.border = "2px solid orange";
+    img.style.opacity = "1.0";
+}
 
 // LAC
 function updateCanvasPosition() {
@@ -1493,7 +1523,7 @@ function BodyOnload() {
 			updateCanvasPosition();
 			mouseX = (lastClientX-canvas1.left)/PIXEL;
 			mouseY = (lastClientY-canvas1.top)/PIXEL;
-			
+
 			// Update coordinates display
 			document.getElementById('coords_x').innerHTML = Math.floor(mouseX);
 		    document.getElementById('coords_y').innerHTML = Math.floor(mouseY);
@@ -1518,9 +1548,8 @@ function BodyOnload() {
 		
 		// If no life pattern, turn pixels on and off individually
 		if (!selectedLifePattern){
-            field[y][x] = field[y][x] > 0 ? 0 : 1.0;
-			NextGen(false);
-			CalcMoments();
+            field[y][x] = field[y][x] > 0 ? 0 : selectedColor;
+			// field[y][x] = (field[y][x] + 1) % 3;
 			DrawAllPanels();
 		}else{
 			// Find the pattern in animalArr
@@ -1530,7 +1559,7 @@ function BodyOnload() {
 					var pattern = animalArr[i][3];
 					if (pattern) {
 						var cellPart = pattern.split("cells=")[1];
-						var cells = ToCellArray(cellPart);
+						var cells = ToCellArray(cellPart, selectedColor);
 
 						// Calculate center offsets
                     	var centerX = Math.floor(cells.w / 2);
@@ -1566,8 +1595,6 @@ function BodyOnload() {
 							}
 						}
 						
-						NextGen(false);
-						CalcMoments();
 						DrawAllPanels();
 					}
 					break;
@@ -1717,36 +1744,89 @@ function NextGen(isUpdate) {
 	for (var i=0; i<F_SIZE; i++)
 		fieldIm[i].fill(0);
 
-	// f * g = F-1( F(f) dot F(g) )
-	FFT2D(1, field, fieldIm);
-	MatrixDot(field, fieldIm, kernelRe, kernelIm, neighRe, neighIm);
-	FFT2D(-1, neighRe, neighIm);
+	// LAC: For Game of Life mode (when NS == 2):
+    if (NS == 2) {  // Game of Life mode
+        for (var i = 0; i < F_SIZE; i++) {
+            for (var j = 0; j < F_SIZE; j++) {
+                // Initialize counters for each color
+                var totalCount = 0;
+                var colorCounts = {1: 0, 2: 0};  // Count of red (1) and blue (2) neighbors
+                
+                // Count neighbors by color
+                for (var di = -1; di <= 1; di++) {
+                    for (var dj = -1; dj <= 1; dj++) {
+                        if (di != 0 || dj != 0) {
+                            var ni = Mod(i + di, F_SIZE);
+                            var nj = Mod(j + dj, F_SIZE);
+                            var neighborState = fieldOld[ni][nj];
+                            if (neighborState > 0) {
+                                totalCount++;
+                                colorCounts[neighborState]++;
+                            }
+                        }
+                    }
+                }
 
-	shiftX = (optCenter==Center_OFF) ? 0 : Math.floor(mX-F_SIZE/2);
-	shiftY = (optCenter==Center_OFF) ? 0 : Math.floor(mY-F_SIZE/2);
+                var currentCell = fieldOld[i][j];
+                var nextState = 0;  // Default to dead
 
-	var vmax = isLimitValue ? 1 : Number.POSITIVE_INFINITY;
-	//neighMax = 0;
-	for (var i=0; i<F_SIZE; i++) {
-		for (var j=0; j<F_SIZE; j++) {
-			var ii = (optCenter==Center_OFF) ? i : Mod(i-shiftY, F_SIZE);
-			var jj = (optCenter==Center_OFF) ? j : Mod(j-shiftX, F_SIZE);
-			/*
-			if (optWindows==Windows_STAT) {
-				var re = field[ii][jj];
-				var im = fieldIm[ii][jj];
-				fieldAm[ii][jj] = Math.sqrt(re*re + im*im);
-				//fieldPh[ii][jj] = Math.atan2(im, re) / π;
+                if (currentCell > 0) {  // If cell is currently alive
+                    if (totalCount < 2 || totalCount > 3) {
+                        // Rule 1 & 5: Dies from underpopulation or overpopulation
+                        nextState = 0;
+                    } else if (totalCount == 2) {
+                        // Rule 2: Survives if both neighbors are same color
+                        if (colorCounts[1] == 2) nextState = 1;        // Both red
+                        else if (colorCounts[2] == 2) nextState = 2;   // Both blue
+                        else nextState = 0;                            // Different colors = death
+                    } else if (totalCount == 3) {
+                        // Rule 3: Takes majority color
+                        if (colorCounts[1] >= 2) nextState = 1;        // Red majority
+                        else if (colorCounts[2] >= 2) nextState = 2;   // Blue majority
+                    }
+                } else {  // If cell is currently dead
+                    if (totalCount == 3) {
+                        // Rule 4: Born with majority color
+                        if (colorCounts[1] >= 2) nextState = 1;        // Red majority
+                        else if (colorCounts[2] >= 2) nextState = 2;   // Blue majority
+                    }
+                }
+
+                field[i][j] = nextState;
+            }
+        }
+    } else { // Else: previous code	
+		// f * g = F-1( F(f) dot F(g) )
+		FFT2D(1, field, fieldIm);
+		MatrixDot(field, fieldIm, kernelRe, kernelIm, neighRe, neighIm);
+		FFT2D(-1, neighRe, neighIm);
+
+		shiftX = (optCenter==Center_OFF) ? 0 : Math.floor(mX-F_SIZE/2);
+		shiftY = (optCenter==Center_OFF) ? 0 : Math.floor(mY-F_SIZE/2);
+
+		var vmax = isLimitValue ? 1 : Number.POSITIVE_INFINITY;
+		//neighMax = 0;
+		for (var i=0; i<F_SIZE; i++) {
+			for (var j=0; j<F_SIZE; j++) {
+				var ii = (optCenter==Center_OFF) ? i : Mod(i-shiftY, F_SIZE);
+				var jj = (optCenter==Center_OFF) ? j : Mod(j-shiftX, F_SIZE);
+				/*
+				if (optWindows==Windows_STAT) {
+					var re = field[ii][jj];
+					var im = fieldIm[ii][jj];
+					fieldAm[ii][jj] = Math.sqrt(re*re + im*im);
+					//fieldPh[ii][jj] = Math.atan2(im, re) / π;
+				}
+				*/
+
+				var n = neigh[ii][jj] = neighRe[i][j];
+				var d = delta[ii][jj] = DeltaFunc(n);
+				var v = fieldOld[i][j] + d / TS;
+				//if (v<0) v = 0; else if (isLimitValue && v>1) v = 1;
+				if (v<0) v = 0; else if (v>vmax) v = vmax;
+				if (isUpdate) field[ii][jj] = v; else field[i][j] = fieldOld[i][j];
+				//if (n > neighMax) neighMax = n;
 			}
-			*/
-
-			var n = neigh[ii][jj] = neighRe[i][j];
-			var d = delta[ii][jj] = DeltaFunc(n);
-			var v = fieldOld[i][j] + d / TS;
-			//if (v<0) v = 0; else if (isLimitValue && v>1) v = 1;
-			if (v<0) v = 0; else if (v>vmax) v = vmax;
-			if (isUpdate) field[ii][jj] = v; else field[i][j] = fieldOld[i][j];
-			//if (n > neighMax) neighMax = n;
 		}
 	}
 	if (isUpdate) {
@@ -2339,7 +2419,7 @@ function UnSimpFrac(st) {
 }
 
 //*** animals
-function ToCellArray(cellSt) {
+function ToCellArray(cellSt, selectedColor = 1) {
 	var isZip1 = cellSt.startsWith(ZIP_HEADER);
 	var isZip2 = cellSt.startsWith(ZIP2_HEADER);
 	var isZip = isZip1 || isZip2;
@@ -2368,7 +2448,9 @@ function ToCellArray(cellSt) {
 		w = Math.max(w, row.length);
 		if (isZip) {
 			for (var j=0; j<row.length; j++) {
-				row[j] = Round(FromZip(row[j]) / 100);
+				// LAC: Replace 1 with selectedColor
+				var val = Round(FromZip(row[j]) / 100);
+                row[j] = val === 1 ? selectedColor : val;
 			}
 		}
 	}
@@ -3176,10 +3258,20 @@ function DrawArray(canvas, arr, scale, isHalf) {
 			var jj = !isHalf ? j2 : ((j2 + F_SIZE/2) % F_SIZE);
 			var v = arr[ii][jj] * scale;
 			var c = Math.floor(v*10);
-			if (v >= 1) S = COLORS[optColor][10];
-			else if (IsPos(v)) S = COLORS[optColor][c];
-			else if (v<NEG_THRES) S = COLORS[GREY][Math.floor((-v+NEG_THRES)/(1+NEG_THRES)*NEG_COLORS)];  // Math.min(10,)
-			else S = COLOR_ZERO;
+			// LAC: old code
+			// if (v >= 1) S = COLORS[optColor][10];
+			// else if (IsPos(v)) S = COLORS[optColor][c];
+			// else if (v<NEG_THRES) S = COLORS[GREY][Math.floor((-v+NEG_THRES)/(1+NEG_THRES)*NEG_COLORS)];  // Math.min(10,)
+			// else S = COLOR_ZERO;
+			// New color selection logic
+            var S;
+            if (v == 0) {
+                S = COLOR_ZERO;
+            } else if (v == 1) {
+                S = COLOR_ONE;
+            } else if (v == 2) {
+                S = COLOR_TWO;
+            }
 			//*** draw delta contours
 			if (optAid==Aid_TRACE && !isHalf && !isKernel) {
 				var d = delta[i2][j2];
