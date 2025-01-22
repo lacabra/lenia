@@ -939,7 +939,7 @@ var isLimitValue = true;
 
 //*** running
 const FPS_FREQ = 20;
-var isRunning = true;
+var isRunning = false;
 var isRunOnce = false;
 var lastLoop = null;
 var fps = 0;
@@ -1461,7 +1461,6 @@ function getRotationFromDirection(dir) {
 // LAC: select color for life form
 function selectColor(img) {
 	selectedColor = img.dataset.code
-	console.log(selectedColor)
 	// Reset borders for all images
     var images = document.getElementById('ColorForms').getElementsByClassName('colorImg');
     for(var i = 0; i < images.length; i++) {
@@ -1491,8 +1490,8 @@ function BodyOnload() {
 	DrawSwatches();
 
 	DefaultGroups();
-	PresetRule({fsize:6, ns:2, ts:1, dfunc:3, lfunc:0, cfunc:4, A:4, C:0.35, W:0.07, isFill:false});
-	AddCells("(zip)01/001/111", false, false);
+	PresetRule({fsize:4, ns:2, ts:1, dfunc:3, lfunc:0, cfunc:4, A:4, C:0.35, W:0.07, isFill:false});
+	// AddCells("(zip)01/001/111", false, false);
 	// TransformField(0, 0, 2, 0, 0);
 
 	//*** works in Windows, but OS X only allow running cut command from semi-trusted events (e.g. onkeydown but not oncopy) 
@@ -3008,7 +3007,7 @@ function SetRule(st) {
 		layerID = r.ruleL;
 		coreID = r.ruleC;
 		if (oldNS != 2 && NS == 2)
-			ResizeAll(6);
+			ResizeAll(4);	// LAC: Resize the field from 64 to 16
 		else if (oldNS == 2 && NS != 2)
 			ResizeAll(7);
 	}
